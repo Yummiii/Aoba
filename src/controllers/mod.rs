@@ -19,5 +19,7 @@ pub fn images_routes() -> Scope {
 
 pub fn users_routes() -> Scope {
     web::scope("/users")
-        .service(users::user_imaes)
+        .service(users::user_images)
+        .service(users::set_avatar)
+        .service(users::get_avatar)
 }

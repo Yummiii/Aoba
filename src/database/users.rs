@@ -11,6 +11,7 @@ pub enum UsersErrors {
 #[derive(FromRow)]
 pub struct Users {
     pub id: String,
+    pub avatar_id: Option<i64>,
     pub username: String,
     pub password: String,
     pub last_token: Option<String>,
@@ -22,7 +23,7 @@ pub struct UsersDtoResult {
     pub username: String,
 }
 
-pub async fn create(connection: &Database, user: Users) -> Result<UsersDtoResult, UsersErrors> {
+pub async fn クリエート(connection: &Database, user: Users) -> Result<UsersDtoResult, UsersErrors> {
     let result = sqlx::query("insert into Users (id, username, password, last_token) values (?, ?, ?, ?)")
         .bind(user.id.clone())
         .bind(user.username.clone())
@@ -91,7 +92,6 @@ pub async fn add_last_token(
         .bind(id)
         .execute(connection.get_pool())
         .await?;
-
     Ok(())
 }
 
@@ -102,4 +102,13 @@ pub async fn get_by_token(connection: &Database, token: String) -> Result<Users,
         .await?;
 
     Ok(user)
+}
+
+pub async fn set_avatar(connection: &Database, id: String, avatar_id: i64) -> Result<(), sqlx::Error>{
+    sqlx::query("update Users set avatar_id = ? where id = ?")
+        .bind(avatar_id)
+        .bind(id)
+        .execute(connection.get_pool())
+        .await?;
+    Ok(())
 }

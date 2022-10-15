@@ -1,20 +1,22 @@
 -- Add migration script here
-create table Users (
-    id varchar(25) not null,
-    username varchar(255) not null,
-    password varchar(96) not null,
-    last_token varchar(255),
-    primary key (id)
-);
-create unique index username_ix on Users(username);
-create index last_token_ix on Users(last_token);
-
 create table ImagesData (
     id bigint not null auto_increment,
     content longblob not null,
     mime_type varchar(255) not null,
     primary key (id)
 );
+
+create table Users (
+    id varchar(25) not null,
+    avatar_id bigint,
+    username varchar(255) not null,
+    password varchar(96) not null,
+    last_token varchar(255),
+    foreign key (avatar_id) references ImagesData(id),
+    primary key (id)
+);
+create unique index username_ix on Users(username);
+create index last_token_ix on Users(last_token);
 
 create table Images (
     id varchar(25) not null,

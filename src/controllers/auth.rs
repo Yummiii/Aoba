@@ -39,10 +39,11 @@ pub async fn sign_up(sign_up: Json<SingUpDto>, database: Data<Database>) -> Http
         id: cuid::cuid().unwrap(),
         username: sign_up.username,
         password,
-        last_token: None
+        last_token: None,
+        avatar_id: None
     };
 
-    match users::create(&*database, db_request).await {
+    match users::クリエート(&*database, db_request).await {
         Ok(response) => HttpResponse::Ok().json(response),
         Err(UsersErrors::DuplicateUsername) => HttpResponse::Conflict().json(serde_json::json!({
             "error": "Username already exists"
