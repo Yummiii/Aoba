@@ -1,18 +1,14 @@
-
-use figment::{
-    providers::{Env, Format, Toml},
-    Figment,
-};
+use figment::{providers::Env, Figment};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-pub struct Config {
+pub struct Configs {
     pub server_port: u16,
     pub database_url: String,
     pub jwt_secret: String,
 }
 
-impl Default for Config {
+impl Default for Configs {
     fn default() -> Self {
         Self {
             server_port: 3000,
@@ -22,21 +18,17 @@ impl Default for Config {
     }
 }
 
-impl Config {
+impl Configs {
     pub fn get_config() -> Self {
-        let config = Figment::new()
-            .merge(Toml::file("Aoba.toml"))
-            .join(Env::prefixed("AOBA_"))
-            .extract();
-
+        let config = Figment::new().join(Env::prefixed("AOBA_")).extract();
         match config {
             Ok(config) => {
-                log::info!("Config loaded successfully");
+                log::info!("Settings loaded successfully");
                 config
             }
             Err(_) => {
-                log::warn!("Config loading failed, using default config");
-                Config::default()
+                log::warn!("Failed loading settings, using defaults");
+                Configs::default()
             }
         }
     }

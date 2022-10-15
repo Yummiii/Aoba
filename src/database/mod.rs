@@ -1,10 +1,7 @@
-use crate::config::Config;
-use actix_web::rt::time;
-use sqlx::{
-    mysql::{MySql, MySqlDatabaseError, MySqlPoolOptions},
-    Pool,
-};
 use std::time::Duration;
+use actix_web::rt::time;
+use sqlx::{Pool, MySql, mysql::{MySqlPoolOptions, MySqlDatabaseError}};
+use crate::configs::Configs;
 
 pub mod users;
 pub mod images;
@@ -14,7 +11,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub async fn new(config: &Config) -> Self {
+    pub async fn new(config: &Configs) -> Self {
         log::info!("Connecting to database");
 
         let mysql_pool = loop {

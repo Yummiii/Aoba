@@ -1,64 +1,173 @@
-use actix_web::{HttpRequest, HttpResponse, web::{Path, Data, Json}, get, post};
+use crate::{
+    auth::Jwt,
+    database::{
+        images::{self, Image},
+        users::{self, User},
+        Database, SqlxErrorExtension,
+    },
+    macros::{auth, eresp, resp},
+};
+use actix_web::{
+    get, post,
+    web::{Data, Json, Path},
+    HttpRequest, HttpResponse,
+};
 use base64::decode;
 use serde::Deserialize;
+use serde_json::json;
 use validator::Validate;
 
-use crate::{database::{images::{self, ImageData}, Database, users}, extractors::UserAuthentication};
+#[derive(Deserialize, Validate, Debug)]
+pub struct UserDto {
+    #[validate(length(
+        min = 3,
+        max = 255,
+        message = "Username must be between 3 and 255 characters"
+    ))]
+    username: String,
+    #[validate(length(min = 8, message = "Password must be greater than 8 characters"))]
+    password: String,
+}
 
-#[get("/{user_id}/images")]
-pub async fn user_images(user_id: Path<(String,)>, database: Data<Database>, user: UserAuthentication) -> HttpResponse {
-    let mut images = Vec::new();
-    if user_id.0 == "@me" {
-        images = images::get_user_images(&*database, user.id.clone()).await.unwrap();
-    } else {
-        images = images::get_user_public_images(&*database, user_id.0.clone()).await.unwrap();
+#[post("/create")]
+pub async fn create_user(user: Json<UserDto>, database: Data<Database>) -> HttpResponse {
+    let user = user.into_inner();
+    if let Err(e) = user.validate() {
+        return eresp!(HttpResponse::UnprocessableEntity(), e, "Invalid payload");
     }
 
-    HttpResponse::Ok().json(images)
+    let password = match bcrypt::hash(user.password, 10) {
+        Ok(password) => password,
+        Err(error) => {
+            log::error!("Failed to hash password: {}", error);
+            return eresp!(HttpResponse::InternalServerError(); "Failed to hash password");
+        }
+    };
+
+    let db_request = User {
+        id: cuid::cuid().unwrap(),
+        username: user.username,
+        password,
+        last_token: None,
+        avatar_id: None,
+    };
+
+    match users::create_user(&*database, db_request).await {
+        Ok(u) => resp!(HttpResponse::Ok(), u, "User created"),
+        Err(err @ sqlx::Error::Database(_)) if err.get_mysql().number() == 1062 => {
+            eresp!(HttpResponse::Conflict(); "Username already exists")
+        }
+        Err(err) => {
+            log::error!("Failed to create user: {}", err);
+            eresp!(HttpResponse::InternalServerError(); "Failed to create user")
+        }
+    }
+}
+
+#[post("/login")]
+pub async fn login_user(
+    login: Json<UserDto>,
+    database: Data<Database>,
+    jwt: Data<Jwt>,
+) -> HttpResponse {
+    let login = login.into_inner();
+    let user = match users::get_by_username(&*database, login.username).await {
+        Ok(user) => user,
+        Err(_e @ sqlx::Error::RowNotFound) => {
+            return eresp!(HttpResponse::Unauthorized(); "Wrong username or password")
+        }
+        Err(e) => {
+            log::error!("Failed to get user: {}", e);
+            return eresp!(HttpResponse::InternalServerError());
+        }
+    };
+
+    match bcrypt::verify(login.password, &user.password) {
+        Ok(true) => {
+            let token = match jwt.create_jwt(user.id.clone()) {
+                Ok(t) => {
+                    if let Err(err) = users::add_last_token(&*database, t.clone(), user.id).await {
+                        log::error!("Failed to add last token: {}", err);
+                        return eresp!(HttpResponse::InternalServerError());
+                    }
+                    t
+                }
+                Err(e) => {
+                    log::error!("Failed to create token: {}", e);
+                    return eresp!(HttpResponse::InternalServerError());
+                }
+            };
+
+            resp!(HttpResponse::Ok(), json!({ "token": token }))
+        }
+        Ok(false) => eresp!(HttpResponse::Unauthorized(); "Wrong username or password"),
+        Err(e) => {
+            log::error!("Failed to verify password: {}", e);
+            eresp!(HttpResponse::InternalServerError())
+        }
+    }
 }
 
 #[derive(Deserialize, Validate, Debug)]
-pub struct AvatarUpDto {
-    #[validate(length(min = 1, message = "kd o avatar piranha?"))]
+pub struct SetAvatarDto {
+    #[validate(length(min = 3, max = 255, message = "Mime Type not set"))]
+    mime_type: String,
+    #[validate(length(min = 1, message = "Content not set"))]
     content: String,
-    #[validate(length(min = 1, message = "coloque o mime type vadia puta"))]
-    mime_type: String
 }
-
 #[post("/avatar")]
-pub async fn set_avatar(image: Json<AvatarUpDto>, database: Data<Database>, user: UserAuthentication) -> HttpResponse {
-    if let Ok(img_content) = decode(image.content.clone()) {
-        let image_id = images::add_image_data(&*database, ImageData {
-            id: 0,
-            mime_type: image.mime_type.clone(),
-            content: img_content
-        }).await.unwrap();
-        users::set_avatar(&*database, user.id.clone(), image_id).await.unwrap();
-        HttpResponse::Ok().finish()
+pub async fn set_avatar(
+    req: HttpRequest,
+    avatar: Json<SetAvatarDto>,
+    database: Data<Database>,
+) -> HttpResponse {
+    let user = auth!(req);
+    let avatar = avatar.into_inner();
+    if let Err(e) = avatar.validate() {
+        return eresp!(HttpResponse::UnprocessableEntity(), e, "Invalid payload");
+    }
+
+    if let Ok(image_content) = decode(avatar.content) {
+        let image_id = images::add_image(
+            &*database,
+            Image {
+                id: 0,
+                content: image_content,
+                mime_type: avatar.mime_type.clone(),
+            },
+        )
+        .await
+        .unwrap();
+        users::set_avatar(&*database, user.id, image_id)
+            .await
+            .unwrap();
+        resp!(HttpResponse::Ok(); "Avatar updated")
     } else {
-        HttpResponse::BadRequest().json(serde_json::json!({
-            "error": "not a valid base64"
-        }))
+        eresp!(HttpResponse::BadGateway(); "Not a valid base64")
     }
 }
 
-
-#[get("/{user_id}/avatar")]
-pub async fn get_avatar(mut user_id: Path<(String,)>, database: Data<Database>) -> HttpResponse {
-    if let Ok(user) = users::get_by_id(&*database, user_id.0.clone()).await {
+#[get("/{id}/avatar")]
+pub async fn get_avatar(
+    req: HttpRequest,
+    database: Data<Database>,
+    id: Path<String>,
+) -> HttpResponse {
+    let id = if id.to_string() == "@me" {
+        auth!(req).id
+    } else {
+        id.to_string()
+    };
+    if let Ok(user) = users::get_by_id(&*database, id).await {
         if let Some(avatar_id) = user.avatar_id {
-            let img_data = images::get_image_data(&*database, avatar_id).await.unwrap();
+            let img_data = images::get_image(&*database, avatar_id).await.unwrap();
             HttpResponse::Ok()
                 .content_type(img_data.mime_type)
                 .body(img_data.content)
         } else {
-            HttpResponse::NotFound().json(serde_json::json!({
-                "error": "user does not have an avatar"
-            }))
+            eresp!(HttpResponse::NotFound(); "User does not have an avatar")
         }
     } else {
-        HttpResponse::NotFound().json(serde_json::json!({
-            "error": "user not found"
-        }))
+        eresp!(HttpResponse::NotFound(); "User not found")
     }
 }
