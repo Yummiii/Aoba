@@ -1,3 +1,4 @@
+use actix_cors::Cors;
 use actix_web::{middleware::Logger, web::{Data, JsonConfig}, App, HttpServer, HttpResponse, error::InternalError};
 use auth::Jwt;
 use configs::Configs;
@@ -32,6 +33,12 @@ async fn main() -> std::io::Result<()> {
             .app_data(database_data.clone())
             .app_data(jwt.clone())
             .wrap(Logger::default())
+            .wrap(
+                Cors::default()
+                    .allow_any_origin()
+                    .allow_any_method()
+                    .allow_any_header(),
+            )
             .service(controllers::users_routes())
             .service(controllers::images_routes())
     })
