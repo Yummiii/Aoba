@@ -31,9 +31,27 @@ pub async fn add_image(connection: &Database, image: Image) -> Result<i64, sqlx:
     Ok(result.last_insert_id() as i64)
 }
 
+pub async fn add_image_info(
+    connection: &Database,
+    info: ImageInfo,
+) -> Result<ImageInfo, sqlx::Error> {
+    query!("insert into images_info (id, user_id, image_id, public, public_list) values (?, ?, ?, ?, ?)", info.id, info.user_id, info.image_id, info.public, info.public_list)
+        .execute(connection.get_pool())
+        .await?;
+    Ok(info)
+}
+
 pub async fn get_image(connection: &Database, id: i64) -> Result<Image, sqlx::Error> {
     let img = query_as!(Image, "select * from images where id = ?", id)
         .fetch_one(connection.get_pool())
         .await?;
     Ok(img)
+}
+
+pub async fn get_image_info(connection: &Database, id: String) -> Result<ImageInfo, sqlx::Error> {
+    let result: ImageInfo = sqlx::query_as("select * from images_info where id = ?")
+        .bind(id)
+        .fetch_one(connection.get_pool())
+        .await?;
+    Ok(result)
 }

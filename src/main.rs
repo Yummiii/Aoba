@@ -33,6 +33,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(jwt.clone())
             .wrap(Logger::default())
             .service(controllers::users_routes())
+            .service(controllers::images_routes())
     })
     .bind(("0.0.0.0", configs.server_port))?
     .run()
