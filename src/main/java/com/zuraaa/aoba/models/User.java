@@ -6,11 +6,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.validator.constraints.Length;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Index;
-import javax.persistence.Table;
+import javax.persistence.*;
 import javax.validation.constraints.NotBlank;
+import java.util.List;
 
 @Entity
 @Table(name = "Users", indexes = {@Index(columnList = "username", unique = true), @Index(columnList = "lastToken")})
@@ -35,6 +33,11 @@ public class User {
     @Setter
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String lastToken;
+
+    @Getter
+    @Setter
+    @OneToMany(mappedBy = "user")
+    private List<File> files;
 
     public User() {
 

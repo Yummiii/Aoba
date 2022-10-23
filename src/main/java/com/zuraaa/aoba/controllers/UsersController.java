@@ -4,14 +4,12 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.zuraaa.aoba.Configs;
-import com.zuraaa.aoba.auth.JwtToken;
 import com.zuraaa.aoba.models.User;
 import com.zuraaa.aoba.repos.UsersRepository;
 import cool.graph.cuid.Cuid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,7 +28,7 @@ public class UsersController {
     @PostMapping("/create")
     public ResponseEntity<User> createUser(@Valid @RequestBody User create_user) {
         if (usersRepo.getByUsername(create_user.getUsername()) == null) {
-            User user = usersRepo.save(new User(Cuid.createCuid(), create_user.getUsername(), passwordEncoder.encode(create_user.getPassword()), null));
+            User user = usersRepo.save(new User(Cuid.createCuid(), create_user.getUsername(), passwordEncoder.encode(create_user.getPassword()), null, null));
             return ResponseEntity.created(URI.create("/users/" + user.getId())).body(user);
         } else {
             return ResponseEntity.badRequest().build();
@@ -57,10 +55,5 @@ public class UsersController {
         } else {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
-    }
-
-    @GetMapping("/a")
-    public String a() {
-        return ((JwtToken) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getId();
     }
 }
