@@ -12,9 +12,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
 import javax.validation.Valid;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 
 @RestController
@@ -26,9 +27,10 @@ public class UsersController {
     private Configs configs;
 
     @PostMapping("/create")
-    public ResponseEntity<User> createUser(@Valid @RequestBody User create_user) {
+    public ResponseEntity<User> createUser(@Valid @RequestBody User create_user) throws Exception {
         if (usersRepo.getByUsername(create_user.getUsername()) == null) {
             User user = usersRepo.save(new User(Cuid.createCuid(), create_user.getUsername(), passwordEncoder.encode(create_user.getPassword()), null, null));
+            Files.createDirectories(Paths.get(configs.getBasePath(), user.getId()));
             return ResponseEntity.created(URI.create("/users/" + user.getId())).body(user);
         } else {
             return ResponseEntity.badRequest().build();

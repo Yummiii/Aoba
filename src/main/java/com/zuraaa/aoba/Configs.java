@@ -9,6 +9,12 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 @ConfigurationPropertiesScan
 @ConfigurationProperties(prefix = "aoba")
 public class Configs {
-    @Getter @Setter @Value("${jwt.secret:ChangeMe}")
+    @Getter
+    @Setter
+    @Value("${jwt.secret:ChangeMe}")
     private String jwtSecret;
+    @Getter
+    @Setter
+    @Value("${base.path:./aoba_data/}")
+    private String basePath;
 }

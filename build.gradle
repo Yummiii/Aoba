@@ -27,6 +27,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'com.auth0:java-jwt:4.2.0'
     implementation 'cool.graph:cuid-java:0.1.1'
+    implementation 'org.jetbrains:annotations:20.1.0'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
