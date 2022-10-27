@@ -2,16 +2,19 @@ package com.zuraaa.aoba.controllers;
 
 import com.zuraaa.aoba.Configs;
 import com.zuraaa.aoba.auth.JwtToken;
-import com.zuraaa.aoba.models.File;
+import com.zuraaa.aoba.models.FileData;
+import com.zuraaa.aoba.models.FileMetadata;
+import com.zuraaa.aoba.models.Folder;
 import com.zuraaa.aoba.models.User;
-import com.zuraaa.aoba.repos.FilesRepository;
+import com.zuraaa.aoba.repos.FilesDataRepository;
+import com.zuraaa.aoba.repos.FilesMetadataRepository;
+import com.zuraaa.aoba.repos.FoldersRepository;
 import com.zuraaa.aoba.repos.UsersRepository;
 import cool.graph.cuid.Cuid;
 import lombok.AllArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,25 +22,38 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+
 
 @RestController
 @RequestMapping("/files")
 @AllArgsConstructor
 public class FilesController {
     private UsersRepository usersRepo;
-    private FilesRepository filesRepo;
+    private FilesMetadataRepository filesMetadataRepositoryRepo;
+    private FoldersRepository foldersRepo;
+    private FilesDataRepository filesDataRepo;
     private Configs configs;
 
     @PostMapping("/add")
-    public ResponseEntity<File> addFile(@RequestPart @NotNull MultipartFile file, @RequestPart String mimeType, @RequestPart String pub, @RequestPart String pubList) throws Exception {
+    public ResponseEntity<FileMetadata> addFile(@RequestPart @NotNull MultipartFile file, @RequestPart String mimeType, @RequestPart(required = false) String folderId, @RequestPart String pub, @RequestPart String pubList) throws Exception {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         JwtToken token = (JwtToken) auth.getPrincipal();
         User user = usersRepo.findById(token.getId()).orElseThrow();
-        File fileDb = filesRepo.save(new File(Cuid.createCuid(), file.getOriginalFilename(), mimeType, Boolean.parseBoolean(pub), Boolean.parseBoolean(pubList), user));
-        file.transferTo(Paths.get(configs.getBasePath(), user.getId(), fileDb.getId()));
-        return ResponseEntity.created(URI.create("/files/" + fileDb.getId())).body(fileDb);
+
+        Folder folder;
+        if (folderId == null) {
+            folder = foldersRepo.getByNameAndUser("root", user);
+        } else {
+            folder = foldersRepo.findById(folderId).orElseThrow();
+            if (!folder.getUser().getId().equals(user.getId())) {
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            }
+        }
+
+        FileData data = filesDataRepo.save(new FileData(0, mimeType, file.getBytes()));
+        FileMetadata meta = new FileMetadata(Cuid.createCuid(), file.getOriginalFilename(), Boolean.parseBoolean(pub), Boolean.parseBoolean(pubList), folder, user, data);
+        meta = filesMetadataRepositoryRepo.save(meta);
+        return ResponseEntity.created(URI.create("/files/" + meta.getId())).body(meta);
     }
 
     @GetMapping("/data/{id}")
@@ -51,13 +67,38 @@ public class FilesController {
             user = null;
         }
 
-        File file = filesRepo.findById(id).orElseThrow();
-        if (file.isPub() || (user != null && user.getId().equals(file.getUser().getId()))) {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(file.getMimeType()));
-            return new ResponseEntity<>(Files.readAllBytes(Paths.get(configs.getBasePath(), file.getUser().getId(), file.getId())), headers, HttpStatus.OK);
+        FileMetadata meta = filesMetadataRepositoryRepo.findById(id).orElse(null);
+        if (meta != null) {
+            if (meta.isPub() || (user != null && user.getId().equals(meta.getUser().getId()))) {
+                HttpHeaders headers = new HttpHeaders();
+                headers.add("Content-Disposition", "filename=" + meta.getFileName());
+                headers.add("Content-Type", meta.getFileData().getMimeType());
+                return new ResponseEntity<>(meta.getFileData().getContent(), headers, HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            }
         } else {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<String> deleteFile(@PathVariable String id) throws Exception {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        JwtToken token = (JwtToken) auth.getPrincipal();
+        User user = usersRepo.findById(token.getId()).orElseThrow();
+        FileMetadata meta = filesMetadataRepositoryRepo.findById(id).orElse(null);
+
+        if (meta != null) {
+            if (meta.getUser().getId().equals(user.getId())) {
+                filesMetadataRepositoryRepo.delete(meta);
+                filesDataRepo.delete(meta.getFileData());
+                return ResponseEntity.ok().build();
+            } else {
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            }
+        } else {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 }

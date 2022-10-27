@@ -1,8 +1,10 @@
 package com.zuraaa.aoba.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.validator.constraints.Length;
 import javax.persistence.*;
@@ -12,6 +14,7 @@ import java.util.List;
 @Entity
 @Table(name = "Users", indexes = {@Index(columnList = "username", unique = true), @Index(columnList = "lastToken")})
 @AllArgsConstructor
+@NoArgsConstructor
 public class User {
     @Getter
     @Setter
@@ -36,10 +39,10 @@ public class User {
     @Getter
     @Setter
     @OneToMany(mappedBy = "user")
-    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    private List<File> files;
-
-    public User() {
-
-    }
+    @JsonIgnore
+    private List<FileMetadata> files;
+    @Getter
+    @Setter
+    @OneToMany(mappedBy = "user")
+    private List<Folder> folders;
 }

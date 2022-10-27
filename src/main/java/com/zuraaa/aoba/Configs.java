@@ -13,8 +13,4 @@ public class Configs {
     @Setter
     @Value("${jwt.secret:ChangeMe}")
     private String jwtSecret;
-    @Getter
-    @Setter
-    @Value("${base.path:./aoba_data/}")
-    private String basePath;
 }
