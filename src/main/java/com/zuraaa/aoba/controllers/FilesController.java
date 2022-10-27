@@ -35,7 +35,7 @@ public class FilesController {
     private Configs configs;
 
     @PostMapping("/add")
-    public ResponseEntity<FileMetadata> addFile(@RequestPart @NotNull MultipartFile file, @RequestPart String mimeType, @RequestPart(required = false) String folderId, @RequestPart String pub, @RequestPart String pubList) throws Exception {
+    public ResponseEntity<FileMetadata> addFile(@RequestPart @NotNull MultipartFile file, @RequestPart @NotNull String mimeType, @RequestPart(required = false) String folderId, @RequestPart String pub, @RequestPart String pubList) throws Exception {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         JwtToken token = (JwtToken) auth.getPrincipal();
         User user = usersRepo.findById(token.getId()).orElseThrow();
@@ -56,7 +56,7 @@ public class FilesController {
         return ResponseEntity.created(URI.create("/files/" + meta.getId())).body(meta);
     }
 
-    @GetMapping("/data/{id}")
+    @GetMapping("/{id}/data")
     public ResponseEntity<byte[]> getFile(@PathVariable String id) throws Exception {
         User user;
         try {
