@@ -100,7 +100,7 @@ public class UsersController {
             }
 
             Folder folder = null;
-            if (folderId == null) {
+            if (folderId == null || folderId.isEmpty()) {
                 folder = foldersRepo.getByNameAndUser("root", user);
             } else {
                 folder = foldersRepo.findByIdAndUser(folderId, user).orElse(null);
