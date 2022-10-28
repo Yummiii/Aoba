@@ -10,6 +10,7 @@ import com.zuraaa.aoba.models.FileMetadata;
 import com.zuraaa.aoba.models.Folder;
 import com.zuraaa.aoba.models.User;
 import com.zuraaa.aoba.repos.FilesDataRepository;
+import com.zuraaa.aoba.repos.FilesMetadataRepository;
 import com.zuraaa.aoba.repos.FoldersRepository;
 import com.zuraaa.aoba.repos.UsersRepository;
 import cool.graph.cuid.Cuid;
@@ -27,8 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,12 +40,13 @@ public class UsersController {
     private UsersRepository usersRepo;
     private FoldersRepository foldersRepo;
     private FilesDataRepository filesDataRepo;
+    private FilesMetadataRepository filesMetadataRepo;
     private Configs configs;
 
     @PostMapping("/create")
     public ResponseEntity<User> createUser(@Valid @RequestBody User create_user) throws Exception {
         if (usersRepo.getByUsername(create_user.getUsername()) == null) {
-            User user = usersRepo.save(new User(Cuid.createCuid(), create_user.getUsername(), passwordEncoder.encode(create_user.getPassword()), null,null, null, null));
+            User user = usersRepo.save(new User(Cuid.createCuid(), create_user.getUsername(), passwordEncoder.encode(create_user.getPassword()), null, null, null, null));
             foldersRepo.save(new Folder(Cuid.createCuid(), null, null, "root", null, user));
             return ResponseEntity.created(URI.create("/users/" + user.getId())).body(user);
         } else {
@@ -75,14 +76,50 @@ public class UsersController {
         }
     }
 
-    @GetMapping("/{id}/files")
-    public ResponseEntity<List<Folder>> getFiles(@PathVariable String id) {
+    @GetMapping("/{id}/list")
+    public ResponseEntity<Map<String, Object>> getFiles(@PathVariable String id, @RequestParam(name = "folder", required = false) String folderId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        JwtToken token = (JwtToken) auth.getPrincipal();
-        User user = usersRepo.findById(id.equals("@me") ? token.getId() : id).orElse(null);
+        User user = null;
+        boolean login = false;
+        if (id.equals("@me")) {
+            if (!auth.getPrincipal().toString().equals("anonymousUser")) {
+                JwtToken token = (JwtToken) auth.getPrincipal();
+                user = usersRepo.findById(token.getId()).orElse(null);
+                login = true;
+            }
+        } else {
+            user = usersRepo.findById(id).orElse(null);
+        }
 
         if (user != null) {
-            return ResponseEntity.ok(foldersRepo.getByUser(user));
+            if (!auth.getPrincipal().toString().equals("anonymousUser")) {
+                JwtToken token = (JwtToken) auth.getPrincipal();
+                if (user.getId().equals(token.getId())) {
+                    login = true;
+                }
+            }
+
+            Folder folder = null;
+            if (folderId == null) {
+                folder = foldersRepo.getByNameAndUser("root", user);
+            } else {
+                folder = foldersRepo.findByIdAndUser(folderId, user).orElse(null);
+            }
+
+            if (folder != null) {
+                Map<String, Object> resp = new HashMap<>();
+                List<FileMetadata> files = null;
+                if (login) {
+                    files = filesMetadataRepo.findByFolderAndUser(folder, user);
+                } else {
+                    files = filesMetadataRepo.findByFolderAndUserAndPubListing(folder, user, true);
+                }
+                resp.put("files", files);
+                resp.put("folders", foldersRepo.findByParentAndUser(folder, user));
+                return ResponseEntity.ok().body(resp);
+            } else {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
         } else {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
@@ -95,7 +132,7 @@ public class UsersController {
         JwtToken token = (JwtToken) auth.getPrincipal();
         User user = usersRepo.findById(token.getId()).orElse(null);
 
-        if(user != null) {
+        if (user != null) {
             FileData avatar = filesDataRepo.save(new FileData(0, mimeType, file.getBytes()));
             user.setAvatar(avatar);
             usersRepo.save(user);

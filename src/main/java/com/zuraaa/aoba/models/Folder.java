@@ -16,13 +16,13 @@ import java.util.List;
 public class Folder {
     @Getter @Setter @Id
     private String id;
-    @Getter @Setter @ManyToOne
+    @Getter @Setter @ManyToOne @JsonIgnore
     private Folder parent;
-    @Getter @Setter @OneToMany(mappedBy = "parent")
+    @Getter @Setter @OneToMany(mappedBy = "parent") @JsonIgnore
     private List<Folder> children;
     @Getter @Setter
     private String name;
-    @Getter @Setter @OneToMany(mappedBy = "folder")
+    @Getter @Setter @OneToMany(mappedBy = "folder") @JsonIgnore
     private List<FileMetadata> files;
     @Getter @Setter @ManyToOne @JoinColumn(name = "user_id", nullable = false) @JsonIgnore
     private User user;

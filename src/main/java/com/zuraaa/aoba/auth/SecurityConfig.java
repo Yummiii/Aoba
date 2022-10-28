@@ -30,7 +30,7 @@ public class SecurityConfig {
         http.authorizeRequests(auth -> {
             auth.antMatchers("/users/authenticate").permitAll();
             auth.antMatchers("/users/create").permitAll();
-            auth.antMatchers("/users/*/files").permitAll();
+            auth.antMatchers("/users/*/list").permitAll();
             auth.antMatchers("/users/*/avatar").permitAll();
             auth.antMatchers("/files/*/data").permitAll();
             auth.anyRequest().authenticated();
