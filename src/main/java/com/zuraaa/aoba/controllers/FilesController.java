@@ -34,7 +34,7 @@ public class FilesController {
     private FilesDataRepository filesDataRepo;
     private Configs configs;
 
-    @PostMapping("/add")
+    @PostMapping("/upload")
     public ResponseEntity<FileMetadata> addFile(@RequestPart @NotNull MultipartFile file, @RequestPart @NotNull String mimeType, @RequestPart(required = false) String folderId, @RequestPart String pub, @RequestPart String pubList) throws Exception {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         JwtToken token = (JwtToken) auth.getPrincipal();
