@@ -29,6 +29,9 @@ public class FileMetadata {
     private boolean pubListing;
     @Getter
     @Setter
+    private long createdAt;
+    @Getter
+    @Setter
     @ManyToOne
     @JoinColumn(name = "folder_id", nullable = false)
     @JsonIgnore

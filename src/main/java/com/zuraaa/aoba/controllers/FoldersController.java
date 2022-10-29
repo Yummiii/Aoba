@@ -11,7 +11,10 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
 import java.net.URI;
@@ -29,12 +32,16 @@ public class FoldersController {
         JwtToken token = (JwtToken) auth.getPrincipal();
         User user = usersRepo.findById(token.getId()).orElseThrow();
 
-        Folder parent = foldersRepo.findById(folder.getParent()).orElse(null);
+        Folder parent = null;
+        if (folder.getParent() != null) {
+            parent = foldersRepo.findById(folder.getParent()).orElse(null);
+        }
+
         if (parent == null) {
             parent = foldersRepo.getByNameAndUser("root", user);
         }
 
         Folder saved = foldersRepo.save(new Folder(Cuid.createCuid(), parent, null, folder.getName(), null, user));
-        return ResponseEntity.created(URI.create("/users/@me/list?folder="+saved.getId())).body(saved);
+        return ResponseEntity.created(URI.create("/users/@me/list?folder=" + saved.getId())).body(saved);
     }
 }

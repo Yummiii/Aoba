@@ -110,9 +110,9 @@ public class UsersController {
                 Map<String, Object> resp = new HashMap<>();
                 List<FileMetadata> files = null;
                 if (login) {
-                    files = filesMetadataRepo.findByFolderAndUser(folder, user);
+                    files = filesMetadataRepo.findByFolderAndUserOrderByCreatedAtDesc(folder, user);
                 } else {
-                    files = filesMetadataRepo.findByFolderAndUserAndPubListing(folder, user, true);
+                    files = filesMetadataRepo.findByFolderAndUserAndPubListingOrderByCreatedAtDesc(folder, user, true);
                 }
                 resp.put("files", files);
                 resp.put("folders", foldersRepo.findByParentAndUser(folder, user));

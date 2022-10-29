@@ -35,7 +35,7 @@ public class FilesController {
     private Configs configs;
 
     @PostMapping("/upload")
-    public ResponseEntity<FileMetadata> addFile(@RequestPart @NotNull MultipartFile file, @RequestPart @NotNull String mimeType, @RequestPart(required = false) String folderId, @RequestPart String pub, @RequestPart String pubList) throws Exception {
+    public ResponseEntity<FileMetadata> addFile(@RequestPart @NotNull MultipartFile file, @RequestPart(required = false) String folderId, @RequestPart String pub, @RequestPart String pubList) throws Exception {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         JwtToken token = (JwtToken) auth.getPrincipal();
         User user = usersRepo.findById(token.getId()).orElseThrow();
@@ -50,8 +50,8 @@ public class FilesController {
             }
         }
 
-        FileData data = filesDataRepo.save(new FileData(0, mimeType, file.getBytes()));
-        FileMetadata meta = new FileMetadata(Cuid.createCuid(), file.getOriginalFilename(), Boolean.parseBoolean(pub), Boolean.parseBoolean(pubList), folder, user, data);
+        FileData data = filesDataRepo.save(new FileData(0, file.getContentType(), file.getBytes()));
+        FileMetadata meta = new FileMetadata(Cuid.createCuid(), file.getOriginalFilename(), Boolean.parseBoolean(pub), Boolean.parseBoolean(pubList), System.currentTimeMillis(),folder, user, data);
         meta = filesMetadataRepositoryRepo.save(meta);
         return ResponseEntity.created(URI.create("/files/" + meta.getId())).body(meta);
     }

@@ -8,6 +8,6 @@ import org.springframework.data.repository.CrudRepository;
 import java.util.List;
 
 public interface FilesMetadataRepository extends CrudRepository<FileMetadata, String> {
-    List<FileMetadata> findByFolderAndUserAndPubListing(Folder folder, User user, boolean pubListing);
-    List<FileMetadata> findByFolderAndUser(Folder folder, User user);
+    List<FileMetadata> findByFolderAndUserAndPubListingOrderByCreatedAtDesc(Folder folder, User user, boolean pubListing);
+    List<FileMetadata> findByFolderAndUserOrderByCreatedAtDesc(Folder folder, User user);
 }
