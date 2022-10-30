@@ -17,6 +17,8 @@ import cool.graph.cuid.Cuid;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -77,7 +79,7 @@ public class UsersController {
     }
 
     @GetMapping("/@me")
-    public  ResponseEntity<User> getMe() {
+    public ResponseEntity<User> getMe() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         JwtToken token = (JwtToken) auth.getPrincipal();
         User user = usersRepo.findById(token.getId()).orElse(null);
@@ -86,7 +88,11 @@ public class UsersController {
     }
 
     @GetMapping("/{id}/list")
-    public ResponseEntity<Map<String, Object>> getFiles(@PathVariable String id, @RequestParam(name = "folder", required = false) String folderId) {
+    public ResponseEntity<Map<String, Object>> getFiles(
+            @PathVariable String id,
+            @RequestParam(name = "folder", required = false) String folderId,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "15") int size) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         User user = null;
         boolean login = false;
@@ -117,13 +123,16 @@ public class UsersController {
 
             if (folder != null) {
                 Map<String, Object> resp = new HashMap<>();
-                List<FileMetadata> files = null;
+                Page<FileMetadata> files = null;
+                PageRequest paginator = PageRequest.of(Math.max(page - 1, 0), Math.max(size, 1));
                 if (login) {
-                    files = filesMetadataRepo.findByFolderAndUserOrderByCreatedAtDesc(folder, user);
+                    files = filesMetadataRepo.findByFolderAndUserOrderByCreatedAtDesc(folder, user, paginator);
                 } else {
-                    files = filesMetadataRepo.findByFolderAndUserAndPubListingOrderByCreatedAtDesc(folder, user, true);
+                    files = filesMetadataRepo.findByFolderAndUserAndPubListingOrderByCreatedAtDesc(folder, user, true, paginator);
                 }
-                resp.put("files", files);
+                resp.put("totalElements", files.getTotalElements());
+                resp.put("totalPages", files.getTotalPages());
+                resp.put("files", files.getContent());
                 resp.put("folders", foldersRepo.findByParentAndUser(folder, user));
                 return ResponseEntity.ok().body(resp);
             } else {
