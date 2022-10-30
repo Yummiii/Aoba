@@ -25,6 +25,7 @@ public class User {
     @Setter
     @NotBlank(message = "Username is required")
     @Length(min = 3, max = 255)
+    @Column(unique = true)
     private String username;
     @Getter
     @Setter
@@ -50,5 +51,6 @@ public class User {
     @Getter
     @Setter
     @OneToMany(mappedBy = "user")
+    @JsonIgnore
     private List<Folder> folders;
 }

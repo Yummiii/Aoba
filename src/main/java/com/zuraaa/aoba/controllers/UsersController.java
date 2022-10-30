@@ -76,6 +76,15 @@ public class UsersController {
         }
     }
 
+    @GetMapping("/@me")
+    public  ResponseEntity<User> getMe() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        JwtToken token = (JwtToken) auth.getPrincipal();
+        User user = usersRepo.findById(token.getId()).orElse(null);
+
+        return ResponseEntity.ok(user);
+    }
+
     @GetMapping("/{id}/list")
     public ResponseEntity<Map<String, Object>> getFiles(@PathVariable String id, @RequestParam(name = "folder", required = false) String folderId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
