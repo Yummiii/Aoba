@@ -13,6 +13,8 @@ import com.zuraaa.aoba.repos.UsersRepository;
 import cool.graph.cuid.Cuid;
 import lombok.AllArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 
 
 @RestController
@@ -51,7 +55,7 @@ public class FilesController {
         }
 
         FileData data = filesDataRepo.save(new FileData(0, file.getContentType(), file.getBytes()));
-        FileMetadata meta = new FileMetadata(Cuid.createCuid(), file.getOriginalFilename(), Boolean.parseBoolean(pub), Boolean.parseBoolean(pubList), System.currentTimeMillis(),folder, user, data);
+        FileMetadata meta = new FileMetadata(Cuid.createCuid(), file.getOriginalFilename(), Boolean.parseBoolean(pub), Boolean.parseBoolean(pubList), System.currentTimeMillis(), folder, user, data);
         meta = filesMetadataRepositoryRepo.save(meta);
         return ResponseEntity.created(URI.create("/files/" + meta.getId())).body(meta);
     }
@@ -73,6 +77,7 @@ public class FilesController {
                 HttpHeaders headers = new HttpHeaders();
                 headers.add("Content-Disposition", "filename=" + meta.getFileName());
                 headers.add("Content-Type", meta.getFileData().getMimeType());
+                headers.add("Cache-Control", "max-age=2630000, no-transform");
                 return new ResponseEntity<>(meta.getFileData().getContent(), headers, HttpStatus.OK);
             } else {
                 return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
@@ -100,5 +105,16 @@ public class FilesController {
         } else {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
+    }
+
+    @GetMapping("/public")
+    public ResponseEntity<Map<String, Object>> getPublic(@RequestParam(required = false, defaultValue = "0") int page, @RequestParam(required = false, defaultValue = "15") int size) {
+        PageRequest paginator = PageRequest.of(Math.max(page - 1, 0), Math.max(size, 1));
+        Page<FileMetadata> files = filesMetadataRepositoryRepo.findAllByPubListingAndPub(true, true, paginator);
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("totalElements", files.getTotalElements());
+        resp.put("totalPages", files.getTotalPages());
+        resp.put("files", files.getContent());
+        return ResponseEntity.ok(resp);
     }
 }

@@ -7,9 +7,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.CrudRepository;
 
-import java.util.List;
-
 public interface FilesMetadataRepository extends CrudRepository<FileMetadata, String> {
     Page<FileMetadata> findByFolderAndUserAndPubListingOrderByCreatedAtDesc(Folder folder, User user, boolean pubListing, Pageable pageable);
+
     Page<FileMetadata> findByFolderAndUserOrderByCreatedAtDesc(Folder folder, User user, Pageable pageable);
+
+    Page<FileMetadata> findAllByPubListingAndPub(boolean pubListing, boolean pub, Pageable pageable);
 }
