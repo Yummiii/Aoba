@@ -30,6 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 import java.net.URI;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -151,7 +152,7 @@ public class UsersController {
         User user = usersRepo.findById(token.getId()).orElse(null);
 
         if (user != null) {
-            FileData avatar = filesDataRepo.save(new FileData(0, mimeType, file.getBytes()));
+            FileData avatar = filesDataRepo.save(new FileData(0, mimeType,  Base64.getEncoder().encodeToString(file.getBytes())));
             user.setAvatar(avatar);
             usersRepo.save(user);
             return ResponseEntity.ok().build();
@@ -167,7 +168,8 @@ public class UsersController {
             HttpHeaders headers = new HttpHeaders();
             headers.add("Content-Disposition", "filename=" + user.getId());
             headers.add("Content-Type", user.getAvatar().getMimeType());
-            return new ResponseEntity<>(user.getAvatar().getContent(), headers, HttpStatus.OK);
+            byte[] result = Base64.getDecoder().decode(user.getAvatar().getContent());
+            return new ResponseEntity<>(result, headers, HttpStatus.OK);
         } else {
             return ResponseEntity.badRequest().build();
         }

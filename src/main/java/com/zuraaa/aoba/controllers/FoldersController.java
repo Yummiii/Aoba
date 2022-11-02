@@ -2,7 +2,7 @@ package com.zuraaa.aoba.controllers;
 
 import com.zuraaa.aoba.auth.JwtToken;
 import com.zuraaa.aoba.models.Folder;
-import com.zuraaa.aoba.models.FolderDto;
+import com.zuraaa.aoba.models.dto.FolderDto;
 import com.zuraaa.aoba.models.User;
 import com.zuraaa.aoba.repos.FoldersRepository;
 import com.zuraaa.aoba.repos.UsersRepository;

@@ -12,5 +12,5 @@ public interface FilesMetadataRepository extends CrudRepository<FileMetadata, St
 
     Page<FileMetadata> findByFolderAndUserOrderByCreatedAtDesc(Folder folder, User user, Pageable pageable);
 
-    Page<FileMetadata> findAllByPubListingAndPub(boolean pubListing, boolean pub, Pageable pageable);
+    Page<FileMetadata> findAllByPubListingAndPubOrderByCreatedAtDesc(boolean pubListing, boolean pub, Pageable pageable);
 }

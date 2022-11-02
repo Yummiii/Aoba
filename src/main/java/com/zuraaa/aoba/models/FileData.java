@@ -17,8 +17,8 @@ public class FileData {
     private long id;
     @Getter @Setter
     private String mimeType;
-    @Getter @Setter @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    private byte[] content;
+    @Getter @Setter @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) @Column(columnDefinition = "TEXT")
+    private String content;
 //    @Getter @Setter @OneToOne
 //    private FileMetadata metadata;
 }

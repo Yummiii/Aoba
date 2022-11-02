@@ -1,4 +1,4 @@
-package com.zuraaa.aoba.models;
+package com.zuraaa.aoba.models.dto;
 
 import lombok.Getter;
 import lombok.Setter;
