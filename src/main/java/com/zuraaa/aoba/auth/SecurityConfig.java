@@ -34,6 +34,7 @@ public class SecurityConfig {
             auth.antMatchers("/users/*/avatar").permitAll();
             auth.antMatchers("/files/*/data").permitAll();
             auth.antMatchers("/files/public").permitAll();
+            auth.antMatchers("/files/public/*").permitAll();
             auth.anyRequest().authenticated();
         });
 

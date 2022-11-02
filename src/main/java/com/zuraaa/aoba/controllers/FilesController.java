@@ -26,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 import java.net.URI;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -122,5 +123,15 @@ public class FilesController {
         resp.put("totalPages", files.getTotalPages());
         resp.put("files", files.getContent());
         return ResponseEntity.ok(resp);
+    }
+
+    @GetMapping("/public/random")
+    public ResponseEntity<byte[]> getRandom() {
+        FileMetadata file = filesMetadataRepositoryRepo.getRandomPublic();
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "filename=" + file.getFileName());
+        headers.add("Cache-Control", "no-cache");
+        headers.add("Content-Type", file.getFileData().getMimeType());
+        return new ResponseEntity<>(Base64.getDecoder().decode(file.getFileData().getContent().split(",")[1]), headers, HttpStatus.OK);
     }
 }
