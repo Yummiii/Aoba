@@ -6,6 +6,7 @@ import com.zuraaa.aoba.models.FileData;
 import com.zuraaa.aoba.models.FileMetadata;
 import com.zuraaa.aoba.models.Folder;
 import com.zuraaa.aoba.models.User;
+import com.zuraaa.aoba.models.dto.FileEditDto;
 import com.zuraaa.aoba.models.dto.FileUploadDto;
 import com.zuraaa.aoba.repos.FilesDataRepository;
 import com.zuraaa.aoba.repos.FilesMetadataRepository;
@@ -65,7 +66,7 @@ public class FilesController {
     }
 
     @GetMapping("/{id}/data")
-    public ResponseEntity<Map<String, Object>> getFile(@PathVariable String id) throws Exception {
+    public ResponseEntity<Object> getFile(@PathVariable String id, @RequestParam(required = false, defaultValue = "json") String mode)  {
         User user;
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -82,10 +83,19 @@ public class FilesController {
                 headers.add("Content-Disposition", "filename=" + meta.getFileName());
                 headers.add("Cache-Control", "max-age=2630000, no-transform");
 
-                Map<String, Object> resp = new HashMap();
-                resp.put("contentType", meta.getFileData().getMimeType());
-                resp.put("content", meta.getFileData().getContent());
-                return new ResponseEntity<>(resp, headers, HttpStatus.OK);
+                if (mode.equals("raw")) {
+                    try {
+                        headers.add("Content-Type", meta.getFileData().getMimeType());
+                        return new ResponseEntity<>(Base64.getDecoder().decode(meta.getFileData().getContent().split(",")[1]), headers, HttpStatus.OK);
+                    } catch (Exception e) {
+                        return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+                    }
+                } else {
+                    Map<String, Object> resp = new HashMap<>();
+                    resp.put("contentType", meta.getFileData().getMimeType());
+                    resp.put("content", meta.getFileData().getContent());
+                    return new ResponseEntity<>(resp, headers, HttpStatus.OK);
+                }
             } else {
                 return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
             }
@@ -94,7 +104,7 @@ public class FilesController {
         }
     }
 
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}/delete")
     public ResponseEntity<String> deleteFile(@PathVariable String id) throws Exception {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         JwtToken token = (JwtToken) auth.getPrincipal();
@@ -142,4 +152,39 @@ public class FilesController {
             return new ResponseEntity<>(null, HttpStatus.I_AM_A_TEAPOT);
         }
     }
+
+    @PutMapping("/{id}/update")
+    public ResponseEntity<FileMetadata> updateFile(@PathVariable String id, @RequestBody @Valid FileEditDto file) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        JwtToken token = (JwtToken) auth.getPrincipal();
+        User user = usersRepo.findById(token.getId()).orElse(null);
+
+        if (user != null) {
+            FileMetadata meta = filesMetadataRepositoryRepo.findById(id).orElse(null);
+            if (meta != null && meta.getUser().getId().equals(user.getId())) {
+
+                if (file.getPub() != null) {
+                    meta.setPub(file.getPub());
+                }
+
+                if (file.getPubList() != null) {
+                    meta.setPubListing(file.getPubList());
+                }
+
+                if (file.getContent() != null) {
+                    FileData data = meta.getFileData();
+                    data.setContent(file.getContent());
+                    filesDataRepo.save(data);
+                }
+
+                filesMetadataRepositoryRepo.save(meta);
+                return ResponseEntity.ok(meta);
+            } else {
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            }
+        } else {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+    }
+
 }
