@@ -128,10 +128,18 @@ public class FilesController {
     @GetMapping("/public/random")
     public ResponseEntity<byte[]> getRandom() {
         FileMetadata file = filesMetadataRepositoryRepo.getRandomPublic();
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-Disposition", "filename=" + file.getFileName());
-        headers.add("Cache-Control", "no-cache");
-        headers.add("Content-Type", file.getFileData().getMimeType());
-        return new ResponseEntity<>(Base64.getDecoder().decode(file.getFileData().getContent().split(",")[1]), headers, HttpStatus.OK);
+        if (file != null) {
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Content-Disposition", "filename=" + file.getFileName());
+            headers.add("Cache-Control", "no-cache");
+            headers.add("Content-Type", file.getFileData().getMimeType());
+            try {
+                return new ResponseEntity<>(Base64.getDecoder().decode(file.getFileData().getContent().split(",")[1]), headers, HttpStatus.OK);
+            } catch(Exception e) {
+                return new ResponseEntity<>(null, HttpStatus.I_AM_A_TEAPOT);
+            }
+        } else {
+            return new ResponseEntity<>(null, HttpStatus.I_AM_A_TEAPOT);
+        }
     }
 }
