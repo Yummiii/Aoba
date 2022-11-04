@@ -5,7 +5,11 @@ plugins {
 }
 
 group = 'com.zuraaa'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.1'
+
+jar {
+    enabled = false
+}
 
 configurations {
     compileOnly {
